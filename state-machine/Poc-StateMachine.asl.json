@@ -1,0 +1,78 @@
+{
+  "StartAt": "GET CircuitStatus",
+  "States": {
+    "GET CircuitStatus": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:getItem",
+      "Parameters": {
+        "TableName": "circuit-breaker-info",
+        "Key": {
+          "contractId": {
+            "S": "412871c4-48f9-4198-a0a7-09afad0b7fa1"
+          }
+        }
+      },
+      "Next": "Is Circuit Closed"
+    },
+    "Is Circuit Closed": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.Item.circuitStatus.S",
+          "StringEquals": "OPEN",
+          "Next": "Circuit Opened"
+        },
+        {
+          "Variable": "$.Item.circuitStatus.S",
+          "StringEquals": "CLOSED",
+          "Next": "Execute Lambda"
+        }
+      ]
+    },
+    "Circuit Opened": {
+      "Type": "Fail"
+    },
+    "Execute Lambda": {
+      "Next": "Circuit Closed",
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:730335531401:function:sf-execute-lambda"
+      },
+      "Comment": "Task to execute lambda. This will set circuit status to OPEN if the execution fails for three times or the task times out",
+      "TimeoutSeconds": 12,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed",
+            "States.Timeout"
+          ],
+          "Next": "UPDATE CircuitStatus",
+          "ResultPath": "$.taskresult"
+        }
+      ]
+    },
+    "UPDATE CircuitStatus": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "circuit-breaker-info",
+        "Key": {
+          "contractId": {
+            "S": "412871c4-48f9-4198-a0a7-09afad0b7fa1"
+          }
+        },
+        "UpdateExpression": "SET circuitStatus = :myValueRef",
+        "ExpressionAttributeValues": {
+          ":myValueRef": {
+            "S": "OPEN"
+          }
+        }
+      },
+      "Next": "Circuit Opened"
+    },
+    "Circuit Closed": {
+      "Type": "Succeed"
+    }
+  }
+}
