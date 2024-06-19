@@ -37,7 +37,7 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:us-east-1:730335531401:function:sf-execute-lambda"
+        "FunctionName": "sf-execute-lambda-temp"
       },
       "Comment": "Task to execute lambda. This will set circuit status to OPEN if the execution fails for three times or the task times out",
       "TimeoutSeconds": 12,
