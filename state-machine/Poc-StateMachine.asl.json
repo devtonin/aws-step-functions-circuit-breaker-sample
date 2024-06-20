@@ -8,7 +8,7 @@
         "TableName": "circuit-breaker-info",
         "Key": {
           "contractId": {
-            "S": "412871c4-48f9-4198-a0a7-09afad0b7fa1"
+            "S": "241dcb89-0d7f-4cad-8b10-693a7a4ce523"
           }
         }
       },
@@ -25,19 +25,19 @@
         {
           "Variable": "$.Item.circuitStatus.S",
           "StringEquals": "CLOSED",
-          "Next": "Execute Lambda"
+          "Next": "Create contract"
         }
       ]
     },
     "Circuit Opened": {
       "Type": "Fail"
     },
-    "Execute Lambda": {
+    "Create contract": {
       "Next": "Circuit Closed",
       "Type": "Task",
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
-        "FunctionName": "sf-execute-lambda-temp"
+        "FunctionName": "arn:aws:lambda:us-east-1:730335531401:function:sf-execute-lambda"
       },
       "Comment": "Task to execute lambda. This will set circuit status to OPEN if the execution fails for three times or the task times out",
       "TimeoutSeconds": 12,
@@ -50,6 +50,19 @@
           "Next": "UPDATE CircuitStatus",
           "ResultPath": "$.taskresult"
         }
+      ],
+      "OutputPath": "$.Payload.contractId",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed",
+            "States.Timeout"
+          ],
+          "BackoffRate": 1,
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "JitterStrategy": "FULL"
+        }
       ]
     },
     "UPDATE CircuitStatus": {
@@ -59,7 +72,7 @@
         "TableName": "circuit-breaker-info",
         "Key": {
           "contractId": {
-            "S": "412871c4-48f9-4198-a0a7-09afad0b7fa1"
+            "S": "241dcb89-0d7f-4cad-8b10-693a7a4ce523"
           }
         },
         "UpdateExpression": "SET circuitStatus = :myValueRef",
